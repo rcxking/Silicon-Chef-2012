@@ -1,10 +1,11 @@
 /** 
   * Silicon Chef Competition - 11/17/12
   * Team "The Corn Flowers"
-  * Bryant Pong - Programmer
-  * Raymond Tse - Programmer
+  * Bryant Pong - Computer Science
+  * Raymond Tse - Computer Science
   * Thomas Hartmann - Electrical
   * Joe Nied - Electrical
+  * Last Modified: 1/26/2013
 **/
 
 /** Software Libraries **/
@@ -18,7 +19,7 @@
 /** END SOFTWARE LIBRARIES **/
 
 /** Function Prototypes **/
-void setPassword(); // Implemented
+void setPassword(); 
 boolean checkPassword();
 void getUserPassword();
 void generateSecret();
@@ -59,16 +60,11 @@ const int POT4 = 3;
 // Confirmation Switch Pin
 const int ENTER = 13;
 
+// LED Pin
+const int ledPin = 7;
+
 // Current Password "Secret" Position
 int secretPosition;
-
-// There are 300,000 ms. in 5 minutes
-// Every 5 minutes, the password secret will change
-const unsigned long fiveInMS = 300000;
-
-// Variable to store the current time 
-// It will reset to 0 every 5 minutes
-unsigned long currentTime;
 
 // Servo Motor Object
 Servo door;
@@ -76,8 +72,7 @@ Servo door;
 /** END GLOBAL VARIABLES **/
 
 // Setup Function
-void setup()
-{
+void setup() {
   // Enable Serial Port for debugging purposes - DISABLE WHEN NOT NEEDED
   Serial.begin(9600);
   
@@ -92,13 +87,15 @@ void setup()
   // use the floating readings on A4 to seed the random generator
   generateSecret();
   
+  // Debug Statements
   Serial.println("Setup Successfully Completed");
   Serial.println("Your secret array is: ");
-  for(unsigned int i = 0; i < 10; i++)
-  {
+  
+  for(unsigned int i = 0; i < 10; i++) {
     Serial.println(secrets[i]);
   }
   
+  // Prepare the LCD to display the passwords
   lcd.clear();
   
   // Initialize the Servo
@@ -107,69 +104,59 @@ void setup()
   // Lock the door
   door.write(117);
   
-  pinMode(7, OUTPUT);
+  // LED pin 
+  pinMode(ledPin, OUTPUT);
   
   delay(1000);
 }
 
 // Main Loop Function
-void loop()
-{
-  // If 5 minutes have passed, then reset the counter and generate a new secret
-  if(currentTime > 10000)
-  {
-    generateSecret();
-    currentTime = 0;
-  }
+void loop() {
   
   // Output the secret string 
-  for(unsigned int i = 0; i < 10; i++)
-  {
+  for(unsigned int i = 0; i < 10; i++) {
     lcd.setCursor(i, 0);
     lcd.print(secrets[i]);
   }
   
   // Actively check for the next attempted password 
   getUserPassword();
-  boolean isPasswordOK = checkPassword(); 
-  
+ 
   // If the password is incorrect, alert the user to the bad password
-  if(!isPasswordOK)
-  {
+  if(checkPassword()) { 
     lcd.clear();
     lcd.print("Please Try Again");
-  }
-  else
-  {
+  } else { // The password is correct!
+    
+    // Tell the user the password is correct
     lcd.clear();
     lcd.print("Correct!");
     
-    digitalWrite(7, HIGH);
+    // Turn on the LED to alert the user that the door is open
+    digitalWrite(ledPin, HIGH);
     
+    // Open the door for 10 seconds, then close it
     door.write(160);
     delay(10000);
     door.write(117);
     
-    digitalWrite(7, LOW);
+    // Turn off the LED after the door is closed
+    digitalWrite(ledPin, LOW);
   }
   
   delay(1500);
   lcd.clear();
-  
-  currentTime = millis();
 }
 
 // Function to set up the initial password - COMPLETED
-void setPassword()
-{
+void setPassword() {
   int POT1Read;
   int POT2Read;
   int POT3Read;
   int POT4Read;
   
   // Keep waiting for the user to set a password 
-  while(digitalRead(ENTER) != 1)
-  {
+  while(digitalRead(ENTER) != 1) {
      // Prompt the user to set a password
     lcd.setCursor(0, 0);
     lcd.print("Set a Password");
@@ -212,9 +199,7 @@ void setPassword()
   // Ask the user to choose a secret position
   lcd.clear();
   
-  
-  while(digitalRead(ENTER) != 1)
-  {
+  while(digitalRead(ENTER) != 1) {
     lcd.setCursor(0, 0);
     lcd.print("Choose SecretPos");
     POT1Read = analogRead(POT1) / 105;
@@ -236,20 +221,36 @@ void setPassword()
 }
 
 // Function to check whether a user's password is correct
-boolean checkPassword()
-{
+boolean checkPassword() {
   // Copy the password into the hashed password
-  for(unsigned int i = 0; i < 4; i++)
-  {
+  for(unsigned int i = 0; i < 4; i++) {
+    /* 
+     * The hashing algorithm is:
+     * 1) Take the secretPosition'th digit from the string of randomly generated numbers
+     * 2) Add that digit to each digit of the base password.  
+     * 3) Take that sum, take the modulus base 10 of that.
+     * 4) Repeat for the other 3 digits, this is the hashed password
+     *
+     * Example:
+     * Let the base password be: 1 2 3 4
+     * Let the secret position be 0 (start counting at 0, with 0 being the leftmost digit and 9 being the rightmost digit
+     * Randomly generated string: 8573298732
+     * The 0th digit (leftmost is 8).
+     * Add 8 to all digits:
+     * 1 + 8 = 9 % 10 = 9
+     * 2 + 8 = 10 % 10 = 0
+     * 3 + 8 = 11 % 10 = 1
+     * 4 + 8 = 12 % 10 = 2
+     * Hashed Password to enter in: 9 0 1 2
+     */
+    
     hashedPassword[i] = (password[i] + secrets[secretPosition]) % 10;
   }
   
   // For all numbers in the password, check for any character mismatches
-  for(unsigned int i = 0; i < 4; i++)
-  {
+  for(unsigned int i = 0; i < 4; i++) {
     // If a number does not match, this password is incorrect
-    if(hashedPassword[i] != attemptedPassword[i])
-    {
+    if(hashedPassword[i] != attemptedPassword[i]) {
       return false;
     }
   }  
@@ -259,8 +260,7 @@ boolean checkPassword()
 }
 
 // Function to read in the next password
-void getUserPassword()
-{
+void getUserPassword() {
   // Variables to hold the potentiometer readings
   int POT1Read;
   int POT2Read;
@@ -268,12 +268,11 @@ void getUserPassword()
   int POT4Read;
   
   // Keep waiting for the user to set a password 
-  while(digitalRead(ENTER) != 1)
-  {
-    //lcd.setCursor(0, 0);
-    //lcd.print("Enter a Password"); 
-    // Get ALL Input Readings 
-    // Divide by 105 to get the readings between 0 - 9
+  while(digitalRead(ENTER) != 1) {
+    /*
+     * Get ALL Input Readings.  The potentiometers read from 0 - 1023, 
+     * so divide by 105 to get the readings between 0 - 9.
+     */
     POT1Read = analogRead(POT1) / 105;
     POT2Read = analogRead(POT2) / 105;
     POT3Read = analogRead(POT3) / 105;
@@ -307,12 +306,11 @@ void getUserPassword()
   Serial.println(POT4Read);
 }
 
-// Function to generate a new secret array
-void generateSecret()
-{
+// Function to generate a new secret string
+void generateSecret() {
   // We need to generate 10 random numbers
-  for(unsigned int i = 0; i < 10; i++)
-  {
+  for(unsigned int i = 0; i < 10; i++) {
+    // For every digit, randomly seed the random function using analog pin 4 (this is a floating pin/not connected)
     randomSeed(analogRead(4));
     secrets[i] = random(0, 10);
   } 
