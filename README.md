@@ -3,9 +3,13 @@ Silicon-Chef-2012
 Team "The Cornflowers" RPI Silicon Chef 2012 Source Code.
 
 Team Members:
+
 Bryant Pong - Computer Science
+
 Raymond Tse - Computer Science
+
 Thomas Hartmann - Electrical Engineer
+
 Joe Nied - Electrical Engineer/Computer Systems Engineer
 
 License
